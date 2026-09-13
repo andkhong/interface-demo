@@ -1,0 +1,69 @@
+{
+  "capability": {
+    "id": "cu-legacy.get-savings-balance",
+    "version": "1.0.0",
+    "contentHash": "sha256:05c6c96e0697c35594fec6adc239c0b7a31eb1c34823111faaa421dea500069e"
+  },
+  "createdAt": "2026-09-13T05:37:22.078Z",
+  "runs": 10,
+  "happyPath": {
+    "inputNames": [
+      "memberNumber"
+    ],
+    "succeeded": 10,
+    "results": [
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success",
+      "success"
+    ]
+  },
+  "expectedOutcome": {
+    "code": "MEMBER_NOT_FOUND",
+    "matched": 10,
+    "results": [
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND",
+      "business_outcome:MEMBER_NOT_FOUND"
+    ]
+  },
+  "averageDurationMs": 1012,
+  "degradedLocatorWarnings": 0,
+  "recoveries": 0,
+  "verdict": "stable",
+  "runIds": [
+    "replay_2026-09-12_22-37-01_rqdj",
+    "replay_2026-09-12_22-37-02_wdpb",
+    "replay_2026-09-12_22-37-03_oqvg",
+    "replay_2026-09-12_22-37-04_txjw",
+    "replay_2026-09-12_22-37-05_dxrm",
+    "replay_2026-09-12_22-37-07_ikyo",
+    "replay_2026-09-12_22-37-07_wahl",
+    "replay_2026-09-12_22-37-09_ozrt",
+    "replay_2026-09-12_22-37-09_avzk",
+    "replay_2026-09-12_22-37-11_dcwh",
+    "replay_2026-09-12_22-37-11_dbrf",
+    "replay_2026-09-12_22-37-13_nwaj",
+    "replay_2026-09-12_22-37-13_btgq",
+    "replay_2026-09-12_22-37-15_pvqh",
+    "replay_2026-09-12_22-37-16_jdyh",
+    "replay_2026-09-12_22-37-17_lpyi",
+    "replay_2026-09-12_22-37-18_wxen",
+    "replay_2026-09-12_22-37-19_jwsm",
+    "replay_2026-09-12_22-37-20_usko",
+    "replay_2026-09-12_22-37-21_zton"
+  ]
+}

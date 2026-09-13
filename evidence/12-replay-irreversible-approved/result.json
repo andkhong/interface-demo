@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "capability": {
+    "id": "cu-legacy.open-sub-account",
+    "version": "1.0.0",
+    "contentHash": "sha256:68988c643ec61c1716e5e2b41358ab062dbaac7fef0c1480a2c1d2cdea492974"
+  },
+  "runId": "replay_2026-09-12_22-38-30_ayok",
+  "recoveries": [],
+  "warnings": [],
+  "humanHelp": [],
+  "durationMs": 2133,
+  "outputs": {
+    "confirmationNumber": "074E39"
+  }
+}

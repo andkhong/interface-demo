@@ -1,0 +1,58 @@
+[
+  {
+    "kind": "stuck",
+    "reasonCode": "CHECK_FAILED",
+    "reason": "after \"Open the member's account detail from the results list\" the expected screen did not appear. Expected: a frame URL containing \"/cu/member\" AND target \"savingsCurrentBalCell\" visible",
+    "step": {
+      "id": "clickMemberNumberLink",
+      "intent": "Open the member's account detail from the results list"
+    },
+    "stepIds": [
+      "clickMemberInquiryLink",
+      "fillMemberNumberBox",
+      "clickInquireButton",
+      "clickMemberNumberLink",
+      "extractSavingsCurrentBalCell"
+    ],
+    "choices": [
+      "retry_step",
+      "continue_from",
+      "mark_done",
+      "abort"
+    ],
+    "mode": "replay",
+    "subject": "cu-legacy.get-savings-balance@1.0.0",
+    "runId": "replay_2026-09-12_22-37-23_ygbi",
+    "observed": {
+      "url": "http://localhost:50613/cu/main",
+      "frames": [
+        {
+          "name": "top",
+          "url": "http://localhost:50613/cu/main"
+        },
+        {
+          "name": "banner",
+          "url": "http://localhost:50613/cu/banner"
+        },
+        {
+          "name": "menu",
+          "url": "http://localhost:50613/cu/menu"
+        },
+        {
+          "name": "main",
+          "url": "http://localhost:50613/cu/member?m=[REDACTED:pii]"
+        }
+      ]
+    },
+    "id": "help-1",
+    "createdAt": "2026-09-13T05:37:44.483Z",
+    "deadline": "2026-09-13T05:52:44.483Z",
+    "status": "resolved",
+    "resolution": {
+      "choice": "continue_from",
+      "note": "scripted operator acknowledged the member alert",
+      "stepId": "extractSavingsCurrentBalCell",
+      "humanActions": []
+    }
+  }
+]

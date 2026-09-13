@@ -1,0 +1,52 @@
+{
+  "status": "failure",
+  "capability": {
+    "id": "cu-legacy.get-savings-balance",
+    "version": "1.0.0",
+    "contentHash": "sha256:05c6c96e0697c35594fec6adc239c0b7a31eb1c34823111faaa421dea500069e"
+  },
+  "runId": "replay_2026-09-12_22-37-00_tdro",
+  "recoveries": [],
+  "warnings": [],
+  "humanHelp": [],
+  "durationMs": 1219,
+  "category": "app_error",
+  "retryable": true,
+  "message": "the app showed \"SYSTEM ERROR\" (system_error)",
+  "step": {
+    "id": "clickMemberNumberLink",
+    "intent": "Open the member's account detail from the results list"
+  },
+  "expected": "the app to respond normally",
+  "observed": {
+    "url": "http://localhost:50613/cu/main",
+    "frames": [
+      {
+        "name": "top",
+        "url": "http://localhost:50613/cu/main"
+      },
+      {
+        "name": "banner",
+        "url": "http://localhost:50613/cu/banner"
+      },
+      {
+        "name": "menu",
+        "url": "http://localhost:50613/cu/menu"
+      },
+      {
+        "name": "main",
+        "url": "http://localhost:50613/cu/member?m=[REDACTED:pii]"
+      }
+    ],
+    "visibleText": "[banner] CU*LEGACY MEMBER SERVICES | Teller: [REDACTED:secret] | Branch 004\n[menu] FUNCTIONS Member Inquiry Teller Drawer System Admin Sign Off\n[main] SYSTEM ERROR ABEND S0C7 IN PROGRAM MBRINQ02 AT OFFSET 00A4. TRANSACTION TERMINATED. CONTACT SYSTEMS OPERATIONS."
+  },
+  "evidence": {
+    "screenshot": "screenshots/failure.png",
+    "pages": [
+      "pages/failure-top.html",
+      "pages/failure-banner.html",
+      "pages/failure-menu.html",
+      "pages/failure-main.html"
+    ]
+  }
+}

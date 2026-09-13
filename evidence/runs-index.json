@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-09-13T05:38:32.549Z",
+  "withAi": true,
+  "scenarios": [
+    {
+      "folder": "01-discovery-get-savings-balance",
+      "shows": "Real Claude discovery run: goal -> saved capability",
+      "outcome": "saved cu-legacy.get-savings-balance@1.0.0 in 6 turns"
+    },
+    {
+      "folder": "02-replay-success",
+      "shows": "Replay without the model, for a different member than the one used in discovery",
+      "outcome": "success (savingsBalance=8210.95)"
+    },
+    {
+      "folder": "03-replay-business-outcome-not-found",
+      "shows": "'No such member' is a business outcome, not a crash",
+      "outcome": "business_outcome MEMBER_NOT_FOUND at step clickInquireButton"
+    },
+    {
+      "folder": "04-replay-invalid-input",
+      "shows": "Inputs are validated against the schema before the app is touched",
+      "outcome": "failure invalid_input: input \"memberNumber\" does not match ^\\d{6}$"
+    },
+    {
+      "folder": "05-replay-recovered-runtime-conditions",
+      "shows": "Maintenance notice dismissed, session timeout -> sign on + restart, slow page -> extra wait",
+      "outcome": "success (savingsBalance=1523.4); recovered: maintenance_notice, session_expired, slow_response"
+    },
+    {
+      "folder": "06-replay-app-error",
+      "shows": "Hard failure with step, expected/observed, masked screenshot and redacted HTML",
+      "outcome": "failure app_error at step clickMemberNumberLink: the app showed \"SYSTEM ERROR\" (system_error)"
+    },
+    {
+      "folder": "07-replay-refused-draft",
+      "shows": "An unapproved (draft) capability is refused for unattended replay",
+      "outcome": "failure not_approved: capability is \"draft\"; run stability + approve first, or pass --allow-draft"
+    },
+    {
+      "folder": "08-stability-then-approved-replay",
+      "shows": "10+10 replays -> stable -> approved (bound to content hash) -> replay runs without --allow-draft",
+      "outcome": "stability stable (10/10 success, 10/10 MEMBER_NOT_FOUND); approved replay: success (savingsBalance=1523.4)"
+    },
+    {
+      "folder": "09-replay-human-handoff",
+      "shows": "Unknown screen -> help request -> operator takes control of the same session -> hands back -> replay verifies and finishes",
+      "outcome": "success (savingsBalance=1523.4); recovered: slow_response; human help: continue_from"
+    },
+    {
+      "folder": "10-discovery-open-sub-account-with-approval",
+      "shows": "Real Claude discovery of an irreversible flow; the Confirm click waited for operator approval",
+      "outcome": "saved cu-legacy.open-sub-account@1.0.0 in 12 turns"
+    },
+    {
+      "folder": "11-replay-irreversible-without-operator",
+      "shows": "Irreversible step with nobody to approve -> stops before clicking",
+      "outcome": "failure approval_required at step clickConfirmButton: \"button \"Confirm\"\" is irreversible and needs human approval, but escalation is off"
+    },
+    {
+      "folder": "12-replay-irreversible-approved",
+      "shows": "Same replay with an operator: approval requested, approved, confirmation read",
+      "outcome": "success (confirmationNumber=074E39)"
+    }
+  ]
+}

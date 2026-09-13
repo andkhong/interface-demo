@@ -1,0 +1,239 @@
+{
+  "schemaVersion": "capability/1",
+  "id": "cu-legacy.get-savings-balance",
+  "version": "1.0.0",
+  "title": "Look up member savings balance",
+  "description": "Given a member number, opens Member Inquiry, looks up the member, and returns the current balance of their regular savings (S00) suffix.",
+  "status": "approved",
+  "approval": {
+    "by": "Demo Reviewer (evidence script)",
+    "at": "2026-09-13T05:37:22.079Z",
+    "contentHash": "sha256:05c6c96e0697c35594fec6adc239c0b7a31eb1c34823111faaa421dea500069e",
+    "stability": "10/10 succeeded, 10/10 returned MEMBER_NOT_FOUND"
+  },
+  "contentHash": "sha256:05c6c96e0697c35594fec6adc239c0b7a31eb1c34823111faaa421dea500069e",
+  "createdFrom": {
+    "kind": "discovery",
+    "runId": "discovery_2026-09-12_22-36-24_acct",
+    "model": "claude-opus-5",
+    "createdAt": "2026-09-13T05:36:43.827Z"
+  },
+  "app": {
+    "profile": "cu-legacy",
+    "surface": "web",
+    "startPath": "/cu/main"
+  },
+  "risk": "read_only",
+  "inputs": {
+    "memberNumber": {
+      "type": "string",
+      "description": "Member number to look up",
+      "pattern": "^\\d{6}$",
+      "sensitivity": "pii"
+    }
+  },
+  "outputs": {
+    "savingsBalance": {
+      "type": "money",
+      "description": "Current balance of the member's regular savings (S00) account",
+      "sensitivity": "none"
+    }
+  },
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member matches the member number given.",
+      "whenTextVisible": "NO RECORDS MATCH"
+    },
+    {
+      "code": "VALIDATION_REJECTED",
+      "description": "The app rejected the member number format.",
+      "whenTextVisible": "INVALID MEMBER # FORMAT"
+    }
+  ],
+  "targets": {
+    "memberInquiryLink": {
+      "description": "link \"Member Inquiry\"",
+      "frame": "menu",
+      "locators": [
+        {
+          "by": "role",
+          "role": "link",
+          "name": "Member Inquiry"
+        },
+        {
+          "by": "css",
+          "selector": "a[href=\"/cu/inquiry\"]"
+        }
+      ]
+    },
+    "memberNumberBox": {
+      "description": "text box in the row labelled \"Member #\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "rowLabel",
+          "role": "textbox",
+          "label": "Member #"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"fld_03\"]"
+        }
+      ]
+    },
+    "inquireButton": {
+      "description": "button \"Inquire\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "role",
+          "role": "button",
+          "name": "Inquire"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"btn_1\"]"
+        }
+      ]
+    },
+    "memberNumberLink": {
+      "description": "link \"{{inputs.memberNumber}}\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "role",
+          "role": "link",
+          "name": "{{inputs.memberNumber}}"
+        },
+        {
+          "by": "css",
+          "selector": "a[href=\"/cu/member?m={{inputs.memberNumber}}\"]"
+        }
+      ]
+    },
+    "savingsCurrentBalCell": {
+      "description": "\"Current Bal\" cell in the \"REGULAR SAVINGS\" row",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "tableCell",
+          "row": "REGULAR SAVINGS",
+          "column": "Current Bal"
+        },
+        {
+          "by": "tableCell",
+          "row": "S00",
+          "column": "Current Bal"
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "id": "clickMemberInquiryLink",
+      "intent": "Open Member Inquiry from the menu",
+      "do": {
+        "action": "click",
+        "target": "memberInquiryLink"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/inquiry"
+        },
+        {
+          "type": "targetVisible",
+          "target": "memberNumberBox"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "fillMemberNumberBox",
+      "intent": "Enter the member number to look up",
+      "do": {
+        "action": "fill",
+        "target": "memberNumberBox",
+        "value": "{{inputs.memberNumber}}"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "targetVisible",
+          "target": "inquireButton"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "clickInquireButton",
+      "intent": "Submit the member inquiry",
+      "do": {
+        "action": "click",
+        "target": "inquireButton"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/inquiry/results"
+        },
+        {
+          "type": "targetVisible",
+          "target": "memberNumberLink"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "clickMemberNumberLink",
+      "intent": "Open the member's account detail from the results list",
+      "do": {
+        "action": "click",
+        "target": "memberNumberLink"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/member"
+        },
+        {
+          "type": "targetVisible",
+          "target": "savingsCurrentBalCell"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "extractSavingsCurrentBalCell",
+      "intent": "Read the current balance of the regular savings suffix",
+      "do": {
+        "action": "extract",
+        "target": "savingsCurrentBalCell",
+        "output": "savingsBalance"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [],
+      "timeoutMs": 10000
+    }
+  ],
+  "finalCheck": [
+    {
+      "type": "textVisible",
+      "text": "SHARE / LOAN SUFFIXES"
+    },
+    {
+      "type": "outputPresent",
+      "output": "savingsBalance"
+    }
+  ],
+  "reviewNotes": []
+}

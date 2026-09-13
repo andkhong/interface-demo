@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.DS_Store
+# Raw run output (may contain unreviewed data). Curated runs are copied to evidence/.
+runs/
+*.log
+!evidence/**/*.log

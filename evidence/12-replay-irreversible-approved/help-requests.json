@@ -1,0 +1,49 @@
+[
+  {
+    "kind": "approval",
+    "reasonCode": "IRREVERSIBLE_ACTION",
+    "reason": "Approve: click \"Confirm\". Why this needs a person: target name \"Confirm\" matches the irreversible pattern; page /cu/subacct/review is marked irreversible (/cu/subacct/review); declared irreversible",
+    "step": {
+      "id": "clickConfirmButton",
+      "intent": "Confirm opening the new sub-account and transferring funds"
+    },
+    "stepIds": [],
+    "choices": [
+      "approve",
+      "reject"
+    ],
+    "mode": "replay",
+    "subject": "cu-legacy.open-sub-account@1.0.0",
+    "runId": "replay_2026-09-12_22-38-30_ayok",
+    "observed": {
+      "url": "http://localhost:50613/cu/main",
+      "frames": [
+        {
+          "name": "top",
+          "url": "http://localhost:50613/cu/main"
+        },
+        {
+          "name": "banner",
+          "url": "http://localhost:50613/cu/banner"
+        },
+        {
+          "name": "menu",
+          "url": "http://localhost:50613/cu/menu"
+        },
+        {
+          "name": "main",
+          "url": "http://localhost:50613/cu/subacct/review"
+        }
+      ]
+    },
+    "id": "help-1",
+    "createdAt": "2026-09-13T05:38:31.926Z",
+    "deadline": "2026-09-13T05:53:31.926Z",
+    "status": "resolved",
+    "resolution": {
+      "choice": "approve",
+      "note": "scripted operator (evidence)",
+      "humanActions": []
+    }
+  }
+]

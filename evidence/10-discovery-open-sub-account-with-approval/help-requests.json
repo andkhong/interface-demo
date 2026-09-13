@@ -1,0 +1,49 @@
+[
+  {
+    "kind": "approval",
+    "reasonCode": "IRREVERSIBLE_ACTION",
+    "reason": "Approve: click \"Confirm\". Why this needs a person: target name \"Confirm\" matches the irreversible pattern; page /cu/subacct/review is marked irreversible (/cu/subacct/review); declared irreversible",
+    "step": {
+      "id": "turn10",
+      "intent": "Confirm opening the new sub-account and transferring funds"
+    },
+    "stepIds": [],
+    "choices": [
+      "approve",
+      "reject"
+    ],
+    "mode": "discovery",
+    "subject": "discovery: Open a new HOLIDAY CLUB sub-account for member [REDACTED:pii] with an opening deposit of 250.00 funded from REGULAR SAVINGS, and read the confirmation number",
+    "runId": "discovery_2026-09-12_22-37-45_qajv",
+    "observed": {
+      "url": "http://localhost:50613/cu/main",
+      "frames": [
+        {
+          "name": "top",
+          "url": "http://localhost:50613/cu/main"
+        },
+        {
+          "name": "banner",
+          "url": "http://localhost:50613/cu/banner"
+        },
+        {
+          "name": "menu",
+          "url": "http://localhost:50613/cu/menu"
+        },
+        {
+          "name": "main",
+          "url": "http://localhost:50613/cu/subacct/review"
+        }
+      ]
+    },
+    "id": "help-1",
+    "createdAt": "2026-09-13T05:38:20.088Z",
+    "deadline": "2026-09-13T05:53:20.088Z",
+    "status": "resolved",
+    "resolution": {
+      "choice": "approve",
+      "note": "scripted operator (evidence): approve",
+      "humanActions": []
+    }
+  }
+]

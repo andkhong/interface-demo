@@ -1,0 +1,93 @@
+{
+  "id": "cu-legacy",
+  "description": "CU*LEGACY v7 teller console (fictional vendor product, local mock).",
+  "sensitiveFields": ["Member #", "Name", "SSN", "Birth Date", "Address", "Phone"],
+  "secrets": {
+    "tellerId": "CU_TELLER_ID",
+    "tellerPassword": "CU_TELLER_PASSWORD"
+  },
+  "signOn": {
+    "whenTextVisible": "TELLER SIGN ON",
+    "steps": [
+      {
+        "action": "fill",
+        "target": {
+          "description": "Teller ID box on the sign-on screen",
+          "locators": [
+            { "by": "rowLabel", "role": "textbox", "label": "Teller ID" },
+            { "by": "css", "selector": "input[name=\"fld_01\"]" }
+          ]
+        },
+        "value": "{{secrets.tellerId}}"
+      },
+      {
+        "action": "fill",
+        "target": {
+          "description": "Password box on the sign-on screen",
+          "locators": [
+            { "by": "rowLabel", "role": "textbox", "label": "Password" },
+            { "by": "css", "selector": "input[name=\"fld_02\"]" }
+          ]
+        },
+        "value": "{{secrets.tellerPassword}}"
+      },
+      {
+        "action": "click",
+        "target": {
+          "description": "Sign On button",
+          "locators": [
+            { "by": "role", "role": "button", "name": "Sign On" },
+            { "by": "css", "selector": "input[name=\"btn_0\"]" }
+          ]
+        }
+      }
+    ],
+    "doneWhenTextVisible": "FUNCTIONS"
+  },
+  "knownScreens": [
+    { "id": "session_expired", "whenTextVisible": "SESSION EXPIRED", "handle": "sign_on_and_restart" },
+    {
+      "id": "maintenance_notice",
+      "whenTextVisible": "SYSTEM NOTICE",
+      "handle": "click",
+      "target": {
+        "description": "Continue link on the maintenance notice",
+        "locators": [{ "by": "role", "role": "link", "name": "Continue" }]
+      }
+    },
+    { "id": "system_error", "whenTextVisible": "SYSTEM ERROR", "handle": "fail", "category": "app_error", "retryable": true },
+    { "id": "function_not_available", "whenTextVisible": "FUNCTION NOT AVAILABLE", "handle": "fail", "category": "app_error", "retryable": false }
+  ],
+  "businessOutcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member matches the member number given.",
+      "whenTextVisible": "NO RECORDS MATCH",
+      "pages": ["/cu/inquiry", "/cu/member"]
+    },
+    {
+      "code": "VALIDATION_REJECTED",
+      "description": "The app rejected the member number format.",
+      "whenTextVisible": "INVALID MEMBER # FORMAT",
+      "pages": ["/cu/inquiry"]
+    },
+    {
+      "code": "VALIDATION_REJECTED",
+      "description": "The app rejected the deposit amount.",
+      "whenTextVisible": "INVALID AMOUNT",
+      "pages": ["/cu/subacct"]
+    },
+    {
+      "code": "INSUFFICIENT_FUNDS",
+      "description": "The funding suffix does not have enough available balance.",
+      "whenTextVisible": "INSUFFICIENT AVAILABLE BALANCE",
+      "pages": ["/cu/subacct"]
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "The teller is not authorized for this amount; a supervisor override is needed.",
+      "whenTextVisible": "NOT AUTHORIZED",
+      "pages": ["/cu/subacct"]
+    }
+  ]
+}

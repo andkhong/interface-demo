@@ -1,0 +1,11 @@
+{
+  "description": "What automation may do in CU*LEGACY. {{baseUrl}} is replaced with the institution's app address.",
+  "allowedOrigins": ["{{baseUrl}}"],
+  "allowedPathPrefixes": ["/cu/"],
+  "blockedPathPrefixes": ["/cu/admin", "/__faults"],
+  "allowedActions": ["click", "fill", "select", "press", "extract"],
+  "irreversible": {
+    "targetNamePattern": "\\b(confirm|submit|post|transfer|approve|delete|purge|reset)\\b",
+    "pagePathPrefixes": ["/cu/subacct/review"]
+  }
+}

@@ -1,0 +1,476 @@
+{
+  "schemaVersion": "capability/1",
+  "id": "cu-legacy.open-sub-account",
+  "version": "1.0.0",
+  "title": "Open a new sub-account with an opening deposit",
+  "description": "Opens a new sub-account for a given member number, selecting the product, opening deposit amount, and funding account, then returns the confirmation number from the confirmation screen.",
+  "status": "draft",
+  "approval": null,
+  "contentHash": "sha256:68988c643ec61c1716e5e2b41358ab062dbaac7fef0c1480a2c1d2cdea492974",
+  "createdFrom": {
+    "kind": "discovery",
+    "runId": "discovery_2026-09-12_22-37-45_qajv",
+    "model": "claude-opus-5",
+    "createdAt": "2026-09-13T05:38:28.038Z"
+  },
+  "app": {
+    "profile": "cu-legacy",
+    "surface": "web",
+    "startPath": "/cu/main"
+  },
+  "risk": "irreversible",
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "description": "Member number to open the sub-account for",
+      "pattern": "^\\d{6}$",
+      "sensitivity": "pii"
+    },
+    "product": {
+      "type": "enum",
+      "description": "Sub-account product to open",
+      "values": [
+        "S20 - HOLIDAY CLUB",
+        "S30 - MONEY MARKET",
+        "C12 - 12 MONTH CERTIFICATE"
+      ],
+      "sensitivity": "none"
+    },
+    "openingDeposit": {
+      "type": "string",
+      "description": "Opening deposit amount for the new sub-account",
+      "pattern": "^\\d+(\\.\\d{2})?$",
+      "sensitivity": "none"
+    },
+    "fundFromSuffix": {
+      "type": "enum",
+      "description": "Sub-account the opening deposit is funded from",
+      "values": [
+        "S00 - REGULAR SAVINGS",
+        "S10 - SHARE DRAFT CHECKING"
+      ],
+      "sensitivity": "none"
+    }
+  },
+  "outputs": {
+    "confirmationNumber": {
+      "type": "string",
+      "description": "Confirmation number of the sub-account opening",
+      "sensitivity": "none"
+    }
+  },
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member matches the member number given.",
+      "whenTextVisible": "NO RECORDS MATCH"
+    },
+    {
+      "code": "VALIDATION_REJECTED",
+      "description": "The app rejected the member number format.",
+      "whenTextVisible": "INVALID MEMBER # FORMAT"
+    },
+    {
+      "code": "VALIDATION_REJECTED",
+      "description": "The app rejected the deposit amount.",
+      "whenTextVisible": "INVALID AMOUNT"
+    },
+    {
+      "code": "INSUFFICIENT_FUNDS",
+      "description": "The funding suffix does not have enough available balance.",
+      "whenTextVisible": "INSUFFICIENT AVAILABLE BALANCE"
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "The teller is not authorized for this amount; a supervisor override is needed.",
+      "whenTextVisible": "NOT AUTHORIZED"
+    }
+  ],
+  "targets": {
+    "memberInquiryLink": {
+      "description": "link \"Member Inquiry\"",
+      "frame": "menu",
+      "locators": [
+        {
+          "by": "role",
+          "role": "link",
+          "name": "Member Inquiry"
+        },
+        {
+          "by": "css",
+          "selector": "a[href=\"/cu/inquiry\"]"
+        }
+      ]
+    },
+    "memberNumberBox": {
+      "description": "text box in the row labelled \"Member #\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "rowLabel",
+          "role": "textbox",
+          "label": "Member #"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"fld_03\"]"
+        }
+      ]
+    },
+    "inquireButton": {
+      "description": "button \"Inquire\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "role",
+          "role": "button",
+          "name": "Inquire"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"btn_1\"]"
+        }
+      ]
+    },
+    "memberNumberLink": {
+      "description": "link \"{{inputs.memberId}}\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "role",
+          "role": "link",
+          "name": "{{inputs.memberId}}"
+        },
+        {
+          "by": "css",
+          "selector": "a[href=\"/cu/member?m={{inputs.memberId}}\"]"
+        }
+      ]
+    },
+    "openSubAccountButton": {
+      "description": "button \"Open Sub-Account\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "role",
+          "role": "button",
+          "name": "Open Sub-Account"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"btn_5\"]"
+        }
+      ]
+    },
+    "productSelect": {
+      "description": "dropdown in the row labelled \"Product\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "rowLabel",
+          "role": "combobox",
+          "label": "Product"
+        },
+        {
+          "by": "css",
+          "selector": "select[name=\"fld_11\"]"
+        }
+      ]
+    },
+    "openingDepositBox": {
+      "description": "text box in the row labelled \"Opening Deposit\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "rowLabel",
+          "role": "textbox",
+          "label": "Opening Deposit"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"fld_12\"]"
+        }
+      ]
+    },
+    "fundFromSelect": {
+      "description": "dropdown in the row labelled \"Fund From Sfx\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "rowLabel",
+          "role": "combobox",
+          "label": "Fund From Sfx"
+        },
+        {
+          "by": "css",
+          "selector": "select[name=\"fld_13\"]"
+        }
+      ]
+    },
+    "continueButton": {
+      "description": "button \"Continue\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "role",
+          "role": "button",
+          "name": "Continue"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"btn_2\"]"
+        }
+      ]
+    },
+    "confirmButton": {
+      "description": "button \"Confirm\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "role",
+          "role": "button",
+          "name": "Confirm"
+        },
+        {
+          "by": "css",
+          "selector": "input[name=\"btn_3\"]"
+        }
+      ]
+    },
+    "confirmationNumberCell": {
+      "description": "cell in the row labelled \"Confirmation #\"",
+      "frame": "main",
+      "locators": [
+        {
+          "by": "rowLabel",
+          "role": "cell",
+          "label": "Confirmation #"
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "id": "clickMemberInquiryLink",
+      "intent": "Open Member Inquiry from the menu",
+      "do": {
+        "action": "click",
+        "target": "memberInquiryLink"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/inquiry"
+        },
+        {
+          "type": "targetVisible",
+          "target": "memberNumberBox"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "fillMemberNumberBox",
+      "intent": "Enter the member number to look up",
+      "do": {
+        "action": "fill",
+        "target": "memberNumberBox",
+        "value": "{{inputs.memberId}}"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "targetVisible",
+          "target": "inquireButton"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "clickInquireButton",
+      "intent": "Look up the member record",
+      "do": {
+        "action": "click",
+        "target": "inquireButton"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/inquiry/results"
+        },
+        {
+          "type": "targetVisible",
+          "target": "memberNumberLink"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "clickMemberNumberLink",
+      "intent": "Open the member's account detail",
+      "do": {
+        "action": "click",
+        "target": "memberNumberLink"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/member"
+        },
+        {
+          "type": "targetVisible",
+          "target": "openSubAccountButton"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "clickOpenSubAccountButton",
+      "intent": "Open the sub-account creation screen",
+      "do": {
+        "action": "click",
+        "target": "openSubAccountButton"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/subacct/new"
+        },
+        {
+          "type": "targetVisible",
+          "target": "productSelect"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "selectProductSelect",
+      "intent": "Choose the sub-account product",
+      "do": {
+        "action": "select",
+        "target": "productSelect",
+        "option": "{{inputs.product}}"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "targetVisible",
+          "target": "openingDepositBox"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "fillOpeningDepositBox",
+      "intent": "Enter the opening deposit amount",
+      "do": {
+        "action": "fill",
+        "target": "openingDepositBox",
+        "value": "{{inputs.openingDeposit}}"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "targetVisible",
+          "target": "fundFromSelect"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "selectFundFromSelect",
+      "intent": "Choose the funding sub-account",
+      "do": {
+        "action": "select",
+        "target": "fundFromSelect",
+        "option": "{{inputs.fundFromSuffix}}"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "targetVisible",
+          "target": "continueButton"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "clickContinueButton",
+      "intent": "Continue to the confirmation step of opening the sub-account",
+      "do": {
+        "action": "click",
+        "target": "continueButton"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/subacct/review"
+        },
+        {
+          "type": "targetVisible",
+          "target": "confirmButton"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "clickConfirmButton",
+      "intent": "Confirm opening the new sub-account and transferring funds",
+      "do": {
+        "action": "click",
+        "target": "confirmButton"
+      },
+      "risk": "irreversible",
+      "by": "ai",
+      "then": [
+        {
+          "type": "urlContains",
+          "value": "/cu/subacct/confirm"
+        },
+        {
+          "type": "targetVisible",
+          "target": "confirmationNumberCell"
+        }
+      ],
+      "timeoutMs": 10000
+    },
+    {
+      "id": "extractConfirmationNumberCell",
+      "intent": "Read the confirmation number for the newly opened sub-account",
+      "do": {
+        "action": "extract",
+        "target": "confirmationNumberCell",
+        "output": "confirmationNumber"
+      },
+      "risk": "safe",
+      "by": "ai",
+      "then": [],
+      "timeoutMs": 10000
+    }
+  ],
+  "finalCheck": [
+    {
+      "type": "textVisible",
+      "text": "SUB-ACCOUNT OPENED"
+    },
+    {
+      "type": "outputPresent",
+      "output": "confirmationNumber"
+    }
+  ],
+  "reviewNotes": []
+}

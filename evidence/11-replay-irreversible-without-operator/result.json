@@ -1,0 +1,52 @@
+{
+  "status": "failure",
+  "capability": {
+    "id": "cu-legacy.open-sub-account",
+    "version": "1.0.0",
+    "contentHash": "sha256:68988c643ec61c1716e5e2b41358ab062dbaac7fef0c1480a2c1d2cdea492974"
+  },
+  "runId": "replay_2026-09-12_22-38-28_cnnl",
+  "recoveries": [],
+  "warnings": [],
+  "humanHelp": [],
+  "durationMs": 1869,
+  "category": "approval_required",
+  "retryable": false,
+  "message": "\"button \"Confirm\"\" is irreversible and needs human approval, but escalation is off",
+  "step": {
+    "id": "clickConfirmButton",
+    "intent": "Confirm opening the new sub-account and transferring funds"
+  },
+  "expected": "permission to click \"button \"Confirm\"\"",
+  "observed": {
+    "url": "http://localhost:50613/cu/main",
+    "frames": [
+      {
+        "name": "top",
+        "url": "http://localhost:50613/cu/main"
+      },
+      {
+        "name": "banner",
+        "url": "http://localhost:50613/cu/banner"
+      },
+      {
+        "name": "menu",
+        "url": "http://localhost:50613/cu/menu"
+      },
+      {
+        "name": "main",
+        "url": "http://localhost:50613/cu/subacct/review"
+      }
+    ],
+    "visibleText": "[banner] CU*LEGACY MEMBER SERVICES | Teller: [REDACTED:secret] | Branch 004\n[menu] FUNCTIONS Member Inquiry Teller Drawer System Admin Sign Off\n[main] REVIEW NEW SUB-ACCOUNT Member # [REDACTED:pii] Product S20 - HOLIDAY CLUB Opening Deposit 250.00 Fund From Sfx S00 - REGULAR SAVINGS PRESSING CONFIRM WILL OPEN THE SUB-ACCOUNT AND TRANSFER FUNDS. Cancel"
+  },
+  "evidence": {
+    "screenshot": "screenshots/failure.png",
+    "pages": [
+      "pages/failure-top.html",
+      "pages/failure-banner.html",
+      "pages/failure-menu.html",
+      "pages/failure-main.html"
+    ]
+  }
+}

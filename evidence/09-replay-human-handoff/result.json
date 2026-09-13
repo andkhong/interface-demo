@@ -1,0 +1,29 @@
+{
+  "status": "success",
+  "capability": {
+    "id": "cu-legacy.get-savings-balance",
+    "version": "1.0.0",
+    "contentHash": "sha256:05c6c96e0697c35594fec6adc239c0b7a31eb1c34823111faaa421dea500069e"
+  },
+  "runId": "replay_2026-09-12_22-37-23_ygbi",
+  "recoveries": [
+    {
+      "step": "clickMemberNumberLink",
+      "condition": "slow_response",
+      "action": "waited an extra 10s for the step's checks"
+    }
+  ],
+  "warnings": [],
+  "humanHelp": [
+    {
+      "requestId": "help-1",
+      "reasonCode": "CHECK_FAILED",
+      "choice": "continue_from",
+      "humanActions": 2
+    }
+  ],
+  "durationMs": 22045,
+  "outputs": {
+    "savingsBalance": 1523.4
+  }
+}

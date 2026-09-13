@@ -1,0 +1,2 @@
+{"seq":1,"at":"2026-09-13T05:37:01.429Z","type":"run_started","summary":"replay cu-legacy.get-savings-balance@1.0.0","capability":{"id":"cu-legacy.get-savings-balance","version":"1.0.0","contentHash":"sha256:05c6c96e0697c35594fec6adc239c0b7a31eb1c34823111faaa421dea500069e","approval":"draft"},"inputs":{"memberNumber":"[REDACTED:pii]"},"faults":[],"escalate":false}
+{"seq":2,"at":"2026-09-13T05:37:01.429Z","type":"run_finished","summary":"failure: not_approved","status":"failure"}
