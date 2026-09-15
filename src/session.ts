@@ -232,6 +232,7 @@ export class Session {
       screenshotFile: log.path(screenshot),
     });
     resolution.humanActions = this.humanActions.slice(humanActionsBefore);
+    helpDesk.recordHumanActions(resolution);
     log.event("help_resolved", {
       summary: `operator chose "${resolution.choice}"${resolution.note ? `: ${resolution.note}` : ""} (${resolution.humanActions.length} human actions)`,
       choice: resolution.choice,

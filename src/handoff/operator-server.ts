@@ -116,6 +116,12 @@ export class OperatorConsole implements HelpDesk {
     waiter.resolve(resolution);
   }
 
+  recordHumanActions(): void {
+    // `resolution` is the same object stored as `request.resolution` (set in finish()), so the
+    // caller's mutation of `humanActions` already landed in memory; this just re-persists it.
+    this.persist();
+  }
+
   state() {
     return {
       control: this.control.get(),

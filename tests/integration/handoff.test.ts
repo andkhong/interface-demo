@@ -96,6 +96,13 @@ describe("human handoff", () => {
     expect(controlChanges).toEqual(["nobody", "human", "automation"]);
     const humanClicks = events.filter((e) => e.type === "human_action" && e.kind === "click");
     expect(humanClicks.some((e) => e.name === "Acknowledge")).toBe(true);
+
+    // The persisted help-requests.json (what the operator console/evidence show) must carry the
+    // same human actions, not just the in-memory result and events.jsonl.
+    const requests = JSON.parse(readFileSync(join(runDir, "help-requests.json"), "utf8"));
+    const resolved = requests.find((r: { status: string }) => r.status === "resolved");
+    expect(resolved.resolution.humanActions.length).toBeGreaterThan(0);
+    expect(resolved.resolution.humanActions.some((a: { name: string }) => a.name === "Acknowledge")).toBe(true);
   });
 
   it("an operator can reject an irreversible step", async () => {

@@ -22,37 +22,58 @@
     ],
     "mode": "replay",
     "subject": "cu-legacy.get-savings-balance@1.0.0",
-    "runId": "replay_2026-09-12_22-37-23_ygbi",
+    "runId": "replay_2026-09-15_14-36-17_cxzu",
     "observed": {
-      "url": "http://localhost:50613/cu/main",
+      "url": "http://localhost:49418/cu/main",
       "frames": [
         {
           "name": "top",
-          "url": "http://localhost:50613/cu/main"
+          "url": "http://localhost:49418/cu/main"
         },
         {
           "name": "banner",
-          "url": "http://localhost:50613/cu/banner"
+          "url": "http://localhost:49418/cu/banner"
         },
         {
           "name": "menu",
-          "url": "http://localhost:50613/cu/menu"
+          "url": "http://localhost:49418/cu/menu"
         },
         {
           "name": "main",
-          "url": "http://localhost:50613/cu/member?m=[REDACTED:pii]"
+          "url": "http://localhost:49418/cu/member?m=[REDACTED:pii]"
         }
       ]
     },
     "id": "help-1",
-    "createdAt": "2026-09-13T05:37:44.483Z",
-    "deadline": "2026-09-13T05:52:44.483Z",
+    "createdAt": "2026-09-15T21:36:38.964Z",
+    "deadline": "2026-09-15T21:51:38.964Z",
     "status": "resolved",
     "resolution": {
       "choice": "continue_from",
       "note": "scripted operator acknowledged the member alert",
       "stepId": "extractSavingsCurrentBalCell",
-      "humanActions": []
+      "humanActions": [
+        {
+          "type": "click",
+          "frame": "main",
+          "url": "http://localhost:49418/cu/member?m=[REDACTED:pii]",
+          "role": "button",
+          "name": "Acknowledge",
+          "rowLabel": null,
+          "detail": "",
+          "at": "2026-09-15T21:36:39.417Z"
+        },
+        {
+          "type": "page",
+          "frame": "main",
+          "url": "http://localhost:49418/cu/member?m=[REDACTED:pii]&ack=1",
+          "role": null,
+          "name": "",
+          "rowLabel": null,
+          "detail": "",
+          "at": "2026-09-15T21:36:39.430Z"
+        }
+      ]
     }
   }
 ]

@@ -48,6 +48,8 @@ export interface HelpResolution {
 
 export interface HelpDesk {
   request(input: HelpRequestInput): Promise<HelpResolution>;
+  /** Called once the caller has filled in `resolution.humanActions`, so the desk can persist the final value. */
+  recordHumanActions(resolution: HelpResolution): void;
   close(): Promise<void>;
 }
 
@@ -56,5 +58,6 @@ export const noHelpDesk: HelpDesk = {
   async request() {
     return { choice: "unavailable", humanActions: [] };
   },
+  recordHumanActions() {},
   async close() {},
 };
