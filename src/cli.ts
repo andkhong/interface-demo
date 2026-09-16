@@ -16,6 +16,7 @@ const USAGE = `Usage: npm run cua -- <command> [options]
   discover --goal "<goal>"         Let Claude work out the goal on the live app and save a capability
            [--name get-savings-balance] [--app cu-legacy] [--start-path /cu/main] [--max-steps 30]
            [--headless] [--no-escalate]
+           [--sensitive-value "name or other non-pattern PII"] (repeatable)
 
   replay <capability> --input name=value [--input ...]
            [--allow-draft] [--escalate] [--fault interstitial,slow,...] [--headed] [--json]
@@ -38,6 +39,7 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     goal: { type: "string" },
+    "sensitive-value": { type: "string", multiple: true, default: [] },
     name: { type: "string" },
     app: { type: "string", default: "cu-legacy" },
     "start-path": { type: "string", default: "/cu/main" },
@@ -139,9 +141,10 @@ async function main(): Promise<number> {
         throw new Error("discover needs ANTHROPIC_API_KEY (copy .env.example to .env). Replay, tests and the demo artifacts work without it.");
       }
       const model = new ClaudeDecisionModel();
-      console.log(`Discovery with ${model.name}\nGoal: ${values.goal}\n`);
+      console.log(`Discovery with ${model.name}\n`);
       const result = await discover({
         goal: values.goal,
+        sensitiveValues: values["sensitive-value"],
         profileId: values.app!,
         baseUrl,
         startPath: values["start-path"]!,

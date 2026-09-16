@@ -343,7 +343,9 @@ export async function replay(opts: ReplayOptions): Promise<{ result: ReplayResul
 
     const action = step.do;
     if (action.action === "extract") {
-      const text = await surface.readText(found.element);
+      const read = await session.read({ element: found.element, label: target.description, step: { id: step.id, intent: step.intent } });
+      if (!read.ok) throw new StepFailed(read.category, read.message, `permission to extract "${target.description}"`);
+      const text = read.text;
       const spec = cap.outputs[action.output]!;
       if (spec.sensitivity !== "none") redactor.addSensitive(text, spec.sensitivity);
       const value = parseOutput(spec.type, text);

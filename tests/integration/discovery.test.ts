@@ -4,11 +4,12 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startMockApp } from "../../apps/mock-cu/server";
 import { refFor, ScriptedDecisionModel } from "../../src/agent/llm";
 import { discover } from "../../src/agent/loop";
 import { replay } from "../../src/replay/engine";
+import * as policyModule from "../../src/safety/policy";
 
 process.env.CU_TELLER_ID ??= "teller01";
 process.env.CU_TELLER_PASSWORD ??= "Legacy-Demo-2026!";
@@ -24,9 +25,8 @@ afterAll(async () => {
   await app.close();
 });
 
-describe("discovery loop + recorder", () => {
-  it("records a capability that replays for another member", async () => {
-    const model = new ScriptedDecisionModel([
+function balanceModel() {
+  return new ScriptedDecisionModel([
       (obs) => ({ tool: "click", input: { ref: refFor(obs, /^link "Member Inquiry"$/), target_name: "memberInquiryLink", intent: "Open Member Inquiry", risk: "safe" } }),
       (obs) => ({
         tool: "fill",
@@ -66,6 +66,59 @@ describe("discovery loop + recorder", () => {
         },
       }),
     ]);
+}
+
+describe("discovery loop + recorder", () => {
+  const defaults = () => ({ goal: "Look up member 100587 and read savings balance", profileId: "cu-legacy", baseUrl: app.url,
+    startPath: "/cu/main", escalate: false, headless: true, quiet: true, runsDir, capabilitiesDir });
+
+  it("does not persist the free-form goal even when discovery stops immediately", async () => {
+    const result = await discover({ ...defaults(), goal: "Look up Alice Example", model: new ScriptedDecisionModel([]), maxSteps: 0 });
+    const events = readFileSync(join(result.runDir, "events.jsonl"), "utf8");
+    expect(events).not.toContain("Alice Example");
+    expect(events).toContain("[not logged: free-form goal]");
+  });
+
+  it("redacts first-turn model echoes of declared goal PII before seeing it on screen", async () => {
+    const result = await discover({ ...defaults(), goal: "Look up Alice Example", sensitiveValues: ["Alice Example"],
+      model: new ScriptedDecisionModel([() => ({ tool: "request_human", input: { reason: "Cannot find Alice Example" } })]) });
+    expect(result.status).toBe("stopped");
+    if (result.status === "stopped") expect(result.reason).not.toContain("Alice Example");
+    for (const file of ["events.jsonl", "transcript.jsonl", "result.json"]) {
+      expect(readFileSync(join(result.runDir, file), "utf8")).not.toContain("Alice Example");
+    }
+  });
+
+  it("registers model-declared PII before logging its decision", async () => {
+    const result = await discover({ ...defaults(), maxSteps: 1,
+      model: new ScriptedDecisionModel([() => ({ tool: "fill", input: { ref: "main:missing", target_name: "nameBox", intent: "Find Alice Example",
+        value: "Alice Example", value_source: "goal_input", input_name: "name", sensitivity: "pii" } })]) });
+    for (const file of ["events.jsonl", "transcript.jsonl"]) {
+      const text = readFileSync(join(result.runDir, file), "utf8");
+      expect(text).not.toContain("Alice Example");
+      expect(text).toContain("[REDACTED:pii]");
+    }
+  });
+
+  it("does not record a policy-forbidden extraction during discovery", async () => {
+    const load = policyModule.loadPolicy;
+    const policy = vi.spyOn(policyModule, "loadPolicy").mockImplementation((id, baseUrl) => {
+      const p = load(id, baseUrl);
+      return { ...p, allowedActions: p.allowedActions.filter((a) => a !== "extract") };
+    });
+    try {
+      const result = await discover({ ...defaults(), model: balanceModel(), maxSteps: 5 });
+      expect(result.status).toBe("stopped");
+      const events = readFileSync(join(result.runDir, "events.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+      expect(events.some((e) => e.type === "policy_checked" && e.action === "extract" && !e.decision.allowed)).toBe(true);
+      expect(events.some((e) => e.type === "extracted")).toBe(false);
+    } finally {
+      policy.mockRestore();
+    }
+  });
+
+  it("records a capability that replays for another member", async () => {
+    const model = balanceModel();
 
     const result = await discover({
       goal: "Look up member 100587 and read their current savings balance",

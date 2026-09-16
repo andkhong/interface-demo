@@ -47,7 +47,7 @@ export class Redactor {
   /** Remember a value that must never be written anywhere during this run. */
   addSensitive(value: string | undefined | null, kind = "pii"): void {
     const v = (value ?? "").trim();
-    if (v.length >= 3) this.known.set(v, kind);
+    if (v.length > 0) this.known.set(v, kind);
   }
 
   knownValues(): string[] {
@@ -59,7 +59,9 @@ export class Redactor {
     // Longest first, so "DELGADO, ROSA M" is replaced before "DELGADO".
     const values = [...this.known.entries()].sort((a, b) => b[0].length - a[0].length);
     for (const [value, kind] of values) {
-      out = out.replace(new RegExp(escapeRegex(value), "gi"), `[REDACTED:${kind}]`);
+      // Short names such as "Li" must be protected without corrupting "click".
+      const pattern = value.length < 3 ? `(?<![\\p{L}\\p{N}_])${escapeRegex(value)}(?![\\p{L}\\p{N}_])` : escapeRegex(value);
+      out = out.replace(new RegExp(pattern, "giu"), `[REDACTED:${kind}]`);
     }
     for (const p of PATTERNS) {
       out = out.replace(p.regex, (m) => (p.accept && !p.accept(m) ? m : `[REDACTED:${p.kind}]`));

@@ -144,11 +144,19 @@ export class WebSurface implements Surface {
 
   async find(target: Target): Promise<FindResult> {
     const frames = this.frames().filter((f) => !target.frame || f.key === target.frame);
+    const snapshots: { key: string; url: string; matches: string[][] }[] = [];
+    for (const { key, frame } of frames) {
+      const url = frame.url();
+      // Evaluate the entire ladder in one document snapshot. A navigation between
+      // separate evaluations must not make a valid primary locator look degraded.
+      const matches = await this.run<string[][]>(frame, `${JSON.stringify(target.locators)}.map(locator => window.__cua.resolve(locator))`);
+      if (!matches || frame.isDetached() || frame.url() !== url) return { status: "not_found" };
+      snapshots.push({ key, url, matches });
+    }
     for (const [locatorIndex, locator] of target.locators.entries()) {
       const hits: ElementRef[] = [];
-      for (const { key, frame } of frames) {
-        const paths = (await this.run<string[]>(frame, `window.__cua.resolve(${JSON.stringify(locator)})`)) ?? [];
-        for (const path of paths) hits.push({ frame: key, frameUrl: frame.url(), path });
+      for (const { key, url, matches } of snapshots) {
+        for (const path of matches[locatorIndex] ?? []) hits.push({ frame: key, frameUrl: url, path });
       }
       if (hits.length === 1) return { status: "found", element: hits[0]!, locator, locatorIndex };
       // Never guess between two matches: clicking the wrong control is worse than stopping.

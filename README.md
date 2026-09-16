@@ -4,6 +4,7 @@ The first time, an AI works out how to do a task in a legacy app that has no API
 
 - **Design write-up:** [REPORT.md](REPORT.md)
 - **Evidence of real runs:** [evidence/](evidence/README.md)
+- **Presentation and study guide:** [STUDY_GUIDE.md](STUDY_GUIDE.md)
 
 ```
 goal ─▶ discover (Claude drives the app) ─▶ capability file ─▶ replay (no AI) ─▶ success | business outcome | failure
@@ -12,7 +13,7 @@ goal ─▶ discover (Claude drives the app) ─▶ capability file ─▶ repla
 
 ## Setup
 
-You need Node.js 22 or newer (tested on 24).
+You need Node.js 22.12+ or 24+ (tested on 24).
 
 ```bash
 npm install
@@ -45,36 +46,41 @@ npm run typecheck
 ### 1. Discover (a real Claude run)
 
 ```bash
-npm run cua -- discover --name get-savings-balance \
+npm run cua -- discover --name get-savings-balance-demo \
   --goal "Look up member 100234 and read their current savings balance"
 ```
 
-1. A Chromium window opens and signs on using the stored credentials. Claude never sees them.
+1. A Chromium window opens and signs on using the stored credentials. The password is filled outside the model loop.
 2. Claude drives the app one action per turn (about 6 turns).
-3. The capability is saved to `capabilities/cu-legacy.get-savings-balance/<version>.json`.
+3. The capability is saved to `capabilities/cu-legacy.get-savings-balance-demo/<version>.json`.
 4. The evidence goes to `runs/<runId>/`: `events.jsonl`, `transcript.jsonl`, and masked screenshots.
 
-If that id already exists, the next minor version is saved (e.g. `1.1.0`) as a **draft**. The command prints the exact replay command to use.
+Discovery always saves a **draft**. Repeating the same name creates the next minor version (e.g. `1.1.0`). The command prints the version, path and replay input names. The separate `-demo` name keeps the checked-in examples available for the later commands.
+
+**Goal privacy:** free-form goals are not written to logs or echoed by the CLI. If a goal contains a name, address, or other PII that pattern matching cannot recognize, declare it with repeatable `--sensitive-value` arguments (programmatic API: `sensitiveValues`). These values are registered before any model response is logged, so echoes are redacted too. Do not put credentials in goals; use the environment. Undeclared free-text PII cannot be reliably identified. Use synthetic values for this demo; shell history is outside the application's logging controls.
 
 ### 2. Review the capability
 
 ```bash
-npm run cua -- show cu-legacy.get-savings-balance
+npm run cua -- show cu-legacy.get-savings-balance-demo
 ```
 
 ### 3. Replay it (no AI)
 
 ```bash
-npm run cua -- replay cu-legacy.get-savings-balance --input memberNumber=100587
+npm run cua -- replay cu-legacy.get-savings-balance-demo --allow-draft --input memberNumber=100587
 ```
 
 - This prints the result contract as JSON: `success` with `outputs.savingsBalance`.
-- The checked-in version is **approved**. A freshly discovered draft needs `--allow-draft`.
-- The input name comes from the capability; `show` lists it.
+- This command uses `--allow-draft` because you just discovered it. If `show` lists a different input name, replace `memberNumber` with that name.
+- For an exact offline demo without discovery, use the approved example: `npm run cua -- replay cu-legacy.get-savings-balance@1.0.0 --input memberNumber=100587`.
+- The remaining commands use the checked-in capability, not the newly discovered `-demo` capability.
 
 ### 4. Errors and exceptional states
 
-| Command (add to the replay command above, replacing the `--input`) | Result |
+Use `npm run cua -- replay cu-legacy.get-savings-balance@1.0.0` followed by one of these argument sets:
+
+| Arguments | Result |
 |---|---|
 | `--input memberNumber=999999` | `business_outcome` `MEMBER_NOT_FOUND` (an answer, not a crash) |
 | `--input memberNumber=12AB` | `failure` `invalid_input`, before the app is opened |
@@ -85,7 +91,7 @@ npm run cua -- replay cu-legacy.get-savings-balance --input memberNumber=100587
 ### 5. Human handoff on the live session
 
 ```bash
-npm run cua -- replay cu-legacy.get-savings-balance --input memberNumber=100234 --fault unknown_dialog --escalate
+npm run cua -- replay cu-legacy.get-savings-balance@1.0.0 --input memberNumber=100234 --fault unknown_dialog --escalate
 ```
 
 1. After about 20 s (the step timeout plus one extra wait), the terminal prints **HUMAN HELP NEEDED** and the console URL. Open **http://127.0.0.1:4100**.
@@ -97,8 +103,8 @@ npm run cua -- replay cu-legacy.get-savings-balance --input memberNumber=100234 
 ### 6. Irreversible flow (needs approval)
 
 ```bash
-npm run cua -- show cu-legacy.open-sub-account
-npm run cua -- replay cu-legacy.open-sub-account --allow-draft --escalate \
+npm run cua -- show cu-legacy.open-sub-account@1.0.0
+npm run cua -- replay cu-legacy.open-sub-account@1.0.0 --allow-draft --escalate \
   --input memberId=100587 --input product="S20 - HOLIDAY CLUB" --input openingDeposit=250.00 --input fundFromSuffix="S00 - REGULAR SAVINGS"
 ```
 
@@ -111,9 +117,9 @@ npm run cua -- replay cu-legacy.open-sub-account --allow-draft --escalate \
 ### 7. Stability and approval (stretch goal)
 
 ```bash
-npm run cua -- stability cu-legacy.get-savings-balance --input memberNumber=100234 --runs 10 \
+npm run cua -- stability cu-legacy.get-savings-balance@1.0.0 --input memberNumber=100234 --runs 10 \
   --expect-outcome memberNumber=999999:MEMBER_NOT_FOUND
-npm run cua -- approve cu-legacy.get-savings-balance --by "Your Name"
+npm run cua -- approve cu-legacy.get-savings-balance@1.0.0 --by "Your Name"
 ```
 
 - `approve` refuses unless the stability report is `stable` **and** was made for the current content hash.
@@ -171,7 +177,7 @@ profiles/cu-legacy.json   app-wide knowledge: sign-on, known screens, business m
 policies/cu-legacy.json   allowlist + irreversible rules
 capabilities/          saved capability files (+ readable .md, stability reports)
 src/surface/           eyes & hands: Surface interface, web implementation, in-page scripts
-src/session.ts         every action goes through here: control turn, policy, approval, secrets, logging
+src/session.ts         act/read: control turn, policy, approval, secrets, logging
 src/agent/             discovery loop, tools, prompt, Claude + scripted models
 src/recorder/          executed actions -> capability (verified locators, inputs, checks, outcomes)
 src/capability/        schema (Zod), store (versions, hash, approval state), lint, show, templates
@@ -189,4 +195,3 @@ tests/                 unit + integration (real browser, fake app, scripted mode
 - **The target app** is a local fake. No real bank system was used, and all data is synthetic.
 - **The operator console** is a minimal local page with no authentication, and escalated replays wait in-process. REPORT.md §5 describes the production design.
 - **Operator actions in `evidence/`** were done by the evidence script, labelled as such. The mechanism they use (control turn, same live page, recorded human actions) is the real one.
-# interface-demo

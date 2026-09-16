@@ -63,7 +63,7 @@ export function getSavingsBalanceFixture(): Capability {
         frame: "main",
         locators: [
           { by: "tableCell", row: "REGULAR SAVINGS", column: "Current Bal" },
-          { by: "rowLabel", role: "cell", label: "S00" },
+          { by: "tableCell", row: "S00", column: "Current Bal" },
         ],
       },
     },

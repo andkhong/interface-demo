@@ -214,10 +214,10 @@ export class Recorder {
           action = { action: "click", target };
           break;
         case "fill":
-          action = { action: "fill", target, value: parameterize(a.value ?? "") };
+          action = { action: "fill", target, value: a.input ? `{{inputs.${identifier(a.input.name)}}}` : parameterize(a.value ?? "") };
           break;
         case "select":
-          action = { action: "select", target, option: parameterize(a.value ?? "") };
+          action = { action: "select", target, option: a.input ? `{{inputs.${identifier(a.input.name)}}}` : parameterize(a.value ?? "") };
           break;
         case "press":
           action = { action: "press", target, key: a.value ?? "Enter" };

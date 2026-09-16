@@ -1,6 +1,6 @@
 // A Session = the surface (eyes & hands) + the rules.
 //
-// Every automated action - AI-chosen, replayed, or a sign-on step - goes through act(), which always:
+// Every automated action (including extraction) goes through act() or read(), which always:
 //   1. checks automation still holds the control turn (a human may have taken over)
 //   2. checks the policy (allowlist + irreversible detection)
 //   3. asks a human to approve irreversible actions
@@ -86,7 +86,7 @@ export class Session {
     return this.humanActions;
   }
 
-  async act(req: ActRequest): Promise<ActResult> {
+  private async authorize(req: Omit<ActRequest, "action"> & { action: ActionType }): Promise<ActResult> {
     const { surface, policy, control, log } = this.d;
     control.assertAutomationMayAct(this.turn);
 
@@ -137,6 +137,22 @@ export class Session {
       }
     }
 
+    return { ok: true, risk: decision.risk };
+  }
+
+  /** Extraction obeys the same action allowlist and control fence as writes. */
+  async read(req: Omit<ActRequest, "action" | "value">): Promise<{ ok: true; text: string } | Extract<ActResult, { ok: false }>> {
+    const result = await this.authorize({ ...req, action: "extract" });
+    if (!result.ok) return result;
+    this.d.control.assertAutomationMayAct(this.turn);
+    return { ok: true, text: await this.d.surface.readText(req.element) };
+  }
+
+  async act(req: ActRequest): Promise<ActResult> {
+    const result = await this.authorize(req);
+    if (!result.ok) return result;
+    const { surface, control, log } = this.d;
+    control.assertAutomationMayAct(this.turn);
     const value = req.value === undefined ? undefined : fillTemplate(req.value, { inputs: {}, secrets: this.d.secrets });
     switch (req.action) {
       case "click":
@@ -159,9 +175,9 @@ export class Session {
       action: req.action,
       target: req.label,
       value: shownValue,
-      risk: decision.risk,
+      risk: result.risk,
     });
-    return { ok: true, risk: decision.risk };
+    return result;
   }
 
   /** Wait (briefly) for a target to appear. Used for sign-on and simple waits. */

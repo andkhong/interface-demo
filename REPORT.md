@@ -1,200 +1,89 @@
 # REPORT — Computer-Use Automation System
 
-**The model discovers → the recorder turns the run into a capability file → replay runs it with no model → a human can take over the same live session → every action is policy-checked and all evidence is redacted.**
-
-The target is a deliberately legacy fake credit-union app (`apps/mock-cu`: framesets, layout tables, labels in neighbouring cells, no ids) that can inject runtime faults on demand. Evidence is in [`evidence/`](evidence/README.md); 31 tests run without an API key.
+A model discovers a UI flow; a recorder turns it into a typed capability; replay executes it without model decisions. A human can take over the same browser when automation cannot proceed. The target is a local, synthetic credit-union app with framesets, layout tables, neighbouring-cell labels, and no test IDs. [Evidence](evidence/README.md) includes two recorded Claude discovery runs and deterministic replays.
 
 ## 1. Architecture
 
-```
-goal ─▶ Discovery agent ─(recorder + lint)─▶ capability file ─▶ Replay engine ◀─ id + inputs
-        observe → decide → act               (JSON, versioned)   steps · checks · recoveries
-                  └──────────────┬───────────────────────────────────────┘
-                                 ▼
-          Session: control turn · policy · approvals · secrets · redacted log
-                                 ▼
-          Surface (web: Playwright, a script in each frame) ◀── same browser ── Operator console
+```text
+goal → discovery (observe / decide / act) → recorder → capability JSON
+                                                        ↓
+                                            replay ← id + inputs
+                                                ↓
+                       Session: control / policy / approval / secrets
+                                                ↓
+                       Surface: perception + actions ← human takeover
 ```
 
-| Decision | Why | Trade-off |
-|---|---|---|
-| **TypeScript, one Node process, CLI** | Zod types shared by recorder, replay and tests; the simplest setup that shows every piece | The browser lives inside the runner (production split in §5) |
-| **Local hostile fake app** | Real runtime errors on demand; no terms-of-service or PII risk | I built both sides, so locators use only generic strategies |
-| **Perception: page text with role, name, row label, column header + masked screenshot** | Works without a clean DOM or test ids; same vocabulary as OS accessibility APIs; maps straight to locators | Pixel-only surfaces need another Surface (§4) |
-| **One tool call per turn, a fresh request each turn**; `claude-opus-5`, adaptive thinking | Each action can be checked, recorded and paused; tokens stay bounded; the system prompt is cached | The model sees its step history, not its earlier reasoning |
-| **Record executed actions; test every locator at record time** | The artifact is separate from the transcript and known to work | Extra lookups during discovery |
-| **Build replay first**, against a hand-written capability | Proves the production path independently of the model | — |
+TypeScript and Zod share static types and runtime validation. A CLI and one Node process keep the vertical slice easy to run. Playwright implements the browser surface; flow logic uses the `Surface` vocabulary, while entry points construct `WebSurface`. `Session.act()` and `Session.read()` enforce policy and the control turn.
 
-The seam is `src/surface/types.ts`: nothing above it imports Playwright. `src/session.ts` is the one choke point every action passes through.
+Claude receives screen text with element references and a masked screenshot. Each turn makes a fresh request containing the goal and action history, selects one tool, then observes again. The checked-in discovery used `claude-opus-5` with adaptive thinking. One action per turn gives a clear boundary for recording and intervention; it costs additional round trips. Tests use a scripted model, while the discovery evidence comes from actual API calls.
+
+The intentionally hostile local app exercises legacy targeting and injected runtime errors without real financial data or a third-party service dependency.
 
 ## 2. Artifact schema
 
-A capability (`src/capability/schema.ts`) is a **contract plus a recipe**. Trimmed from the discovered artifact:
+A capability is a contract plus an executable recipe, separate from the transcript. `src/capability/schema.ts` defines:
 
-```jsonc
-{
-  "id": "cu-legacy.get-savings-balance", "version": "1.0.0",
-  "status": "approved", "contentHash": "sha256:05c6…",       // approval is bound to this hash
-  "app": { "profile": "cu-legacy", "surface": "web", "startPath": "/cu/main" },
-  "risk": "read_only",
-  "inputs":  { "memberNumber": { "type": "string", "pattern": "^\\d{6}$", "sensitivity": "pii" } },
-  "outputs": { "savingsBalance": { "type": "money", "sensitivity": "none" } },
-  "outcomes": [ { "code": "MEMBER_NOT_FOUND", "whenTextVisible": "NO RECORDS MATCH" } ],
-  "targets": {
-    "memberNumberLink": { "frame": "main", "locators": [
-      { "by": "role", "role": "link", "name": "{{inputs.memberNumber}}" },
-      { "by": "css", "selector": "a[href=\"/cu/member?m={{inputs.memberNumber}}\"]" } ] },
-    "savingsCurrentBalCell": { "frame": "main", "locators": [
-      { "by": "tableCell", "row": "REGULAR SAVINGS", "column": "Current Bal" },
-      { "by": "tableCell", "row": "S00", "column": "Current Bal" } ] } },
-  "steps": [ /* … */ { "id": "clickMemberNumberLink", "do": { "action": "click", "target": "memberNumberLink" },
-      "risk": "safe", "by": "ai",
-      "then": [ { "type": "urlContains", "value": "/cu/member" },
-                { "type": "targetVisible", "target": "savingsCurrentBalCell" } ] } /* … */ ],
-  "finalCheck": [ { "type": "textVisible", "text": "SHARE / LOAN SUFFIXES" },
-                  { "type": "outputPresent", "output": "savingsBalance" } ]
-}
-```
+| Field | Purpose |
+|---|---|
+| `id`, `version`, `createdFrom` | Identity, semantic version, discovery provenance |
+| `inputs`, `outputs`, `outcomes` | Typed invocation arguments, returned data, legitimate business results |
+| `targets` | Named controls with ordered locator alternatives and optional frame hints |
+| `steps`, `finalCheck` | Ordered actions, intermediate checks, completion conditions |
+| `risk`, `status`, `approval`, `contentHash` | Risk classification and approval bound to content |
 
-- **Contract first.** A caller only needs `inputs`, `outputs` and `outcomes`. Inputs are validated before the app is touched. `outcomes` makes "no such member" part of the contract. `sensitivity` drives redaction.
-- **Targets are separate from steps.** Reviewers can see how each control is found, in words. A control used twice is described once. Targets are also the per-tenant override point (§4).
-- **Locator ladder, best first:** role + name → table cell (row text + column header) → row label → attribute CSS.
-  - Each locator is verified to match exactly one element when it is recorded.
-  - Positional paths are never saved: after a layout change they silently point at a different row.
-- **Parameterized.** Values taken from the goal become `{{inputs.x}}` everywhere, including inside locators. Credentials are `{{secrets.x}}` and live only in the app profile.
-- **Every step has a check** (the next control is visible, and the page changed if it did), plus a final check.
-- **Versioned and reviewable:**
-  - semver version, content hash, and a draft/approved status bound to that hash
-  - provenance: which run and model created it
-  - `show` renders it as Markdown for reviewers
-  - `lint` refuses to save anything that looks like PII
+For example, savings lookup takes a six-digit member number and returns a numeric savings balance. A missing member returns `MEMBER_NOT_FOUND`. References and input patterns are validated; money outputs are parsed and every declared output must be present before success.
 
-App-wide knowledge (sign-on, known screens, business messages, sensitive fields) is written once in `profiles/cu-legacy.json`. The business outcomes for pages a flow visits are copied into the capability, so the capability is self-contained.
+The recorder records executed actions and verifies each saved locator identifies exactly the chosen element. It prefers role/name, table row plus column, row labels, then attribute CSS; positional CSS paths are discarded. Targets are separate from steps for reuse and review. Goal-derived fill/select values always become `{{inputs.name}}`, including short values such as `50`. Longer literal values are also generalized in locators and descriptions. Secret placeholders belong to the sign-on profile, not the discovered flow.
+
+Discovery saves drafts, bumps versions, and rejects artifacts containing known or pattern-detected sensitive values. `show` renders a readable summary. Approval is invalidated when capability content changes; it is a local review mechanism, not a cryptographic authorization service.
 
 ## 3. Determinism & error handling
 
-Replay (`src/replay/engine.ts`) runs the same steps with the same locators and no model. Every wait is a poll with a timeout. A locator must match **exactly one** visible control:
-- **None:** try the next locator.
-- **Two or more:** `target_ambiguous`. Replay never guesses.
-- **Found by a fallback locator:** success, plus a `locator_degraded` warning. This is the drift signal.
+Replay makes no LLM calls. It follows the artifact, checks typed inputs before launching the browser, verifies targets and checkpoints, and parses outputs. A locator must match exactly one visible element. Multiple matches stop with `target_ambiguous`; a fallback match emits `locator_degraded`. Each frame's locator ladder is evaluated in one document snapshot so navigation does not manufacture a fallback match.
 
-While waiting for anything, replay checks the screen in priority order:
-1. **Failure screens** (profile) → `failure: app_error`.
-2. **Business outcomes** (capability) → `business_outcome`.
-3. **Recoverable screens** (profile) → handled and listed in `recoveries[]`:
-   - maintenance notice → click Continue
-   - signed out → sign on and restart from step 1
-   - slow page → one extra wait
+Bounded polling checks failure screens first, then business outcomes, recoverable screens, and the requested checkpoint. Recoveries include dismissing a known notice, signing on again and restarting, and one extra wait for a slow load. Recovery counts are capped per condition. Automatic restarts stop after an irreversible action to avoid duplicate submission.
 
-   Each is capped at 2 per condition. **Restarts happen only before any irreversible step.** After one, replay stops with `session_lost` rather than risk doing it twice.
-4. The step's own check.
+| Result | Meaning and context |
+|---|---|
+| `success` | Declared outputs, recoveries, locator warnings, human help |
+| `business_outcome` | Expected code/message and step, such as no member or insufficient funds |
+| `failure` | Category, retryability, step, expected/observed state, masked screenshot and redacted HTML when available |
 
-| Status | Carries | Examples |
-|---|---|---|
-| `success` | outputs, `recoveries`, `warnings`, `humanHelp` | balance read after dismissing a maintenance notice |
-| `business_outcome` | code, message, step | `MEMBER_NOT_FOUND`, `VALIDATION_REJECTED`, `INSUFFICIENT_FUNDS`, `PERMISSION_DENIED` |
-| `failure` | category, retryable, step, expected, observed, masked screenshot + redacted HTML | `invalid_input`, `not_approved`, `target_not_found`, `target_ambiguous`, `check_failed`, `app_error`, `session_lost`, `policy_blocked`, `approval_required`/`approval_rejected`, `nobody_responded`, `bad_output` |
-
-Evidence folders 02–12 show each path. Tests also cover ambiguous and degraded locators, policy blocks, and a rejected approval.
+Unknown dialogs become a failed checkpoint and can trigger handoff. Validation, permission denial, session expiry and application errors are treated explicitly. Diagnostics remain available in each run folder. Integration tests use the real fake app and Chromium, including discovery-to-replay, error handling, policy denial and handoff.
 
 ## 4. Heterogeneity & multi-tenant
 
-**Surface seam.** `Surface` is small: observe, find, click/fill/select/press, read, findText, screenshot. The capability's vocabulary (role, name, row label, column header, visible text) is not web-specific. Only `css` is, and it is always the last locator.
-- **Legacy web (built):** every frame is searched, with a frame-name hint. Tables are handled by row label and table cell.
-- **Desktop:** a Windows UI Automation or macOS AX surface exposes the same role + name tree. A window plays the role of a frame, and an `automationId` locator is added. Recorder, replay, Session, policy and handoff stay unchanged.
-- **Pixel-only (Citrix, 3270 green screens):** an OCR surface returns text with positions, plus a `screenField(row, col)` locator. This is the weakest surface, so expect more escalations.
+`Surface` separates observing, finding, reading and acting from the recorded flow. The web implementation searches frames and understands table labels. A desktop implementation would map windows and accessibility roles to this vocabulary, add an `automationId` locator, and extend schema validation and surface construction. Pixel-only environments would need OCR/coordinates and more conservative verification. Neither desktop nor OCR support is built.
 
-**Multi-tenant (designed, not built).** The capability actually run is built from three layers:
-1. **Vendor profile**, one per product version.
-2. **Base capability**, recorded once (relative paths, parameterized values).
-3. **Tenant overlay**: a small JSON patch keyed by target or step id. Examples: the `memberNumberBox` label is "Account Number", an extra known screen, a different base URL or policy.
+For shared vendor products, the proposed model combines a vendor/version profile, a base capability, and a tenant overlay keyed by target or step ID. Relative paths and input placeholders already support different hosts and invocation data. Overlay merging, fingerprinting and per-tenant approvals are design work, not implemented features.
 
-The result records the hash of the merged capability.
-
-**Managing drift:**
-- Pick the profile from a version fingerprint on screen.
-- Track `locator_degraded`, `target_not_found` and `check_failed` rates per capability × tenant × version.
-- Run stability canaries.
-- Keep approvals per tenant and hash, so one drifting tenant drops back to draft on its own.
-- Fix drift by re-running discovery on that tenant to propose an overlay diff, not a new capability.
+The merged artifact would receive its own hash and tenant-specific approval. Screen fingerprints, degraded-locator/error rates and stability canaries would detect drift. Discovery would propose a reviewed overlay diff for an affected tenant, avoiding a full re-recording for every installation.
 
 ## 5. Escalation & handoff
 
-**Detect "stuck":**
-- **Discovery:** the agent calls `request_human`, the screen is unchanged for 3 turns, 3 actions fail in a row, or a click is irreversible.
-- **Replay:** a target is not found or ambiguous, or a check fails (after the timeout plus one extra wait), or a step is irreversible.
+Discovery requests help explicitly or after three unchanged turns or repeated action failures. Replay escalates unresolved target/check failures when enabled. Irreversible actions request approval. Requests carry a run/capability identifier, step, reason, frame locations, masked screenshot, choices and deadline. Raw discovery goals are omitted from persisted context.
 
-**Route.** A help request carries kind, reason code and text, the capability or goal, the step, frame URLs, a masked screenshot, the allowed choices and a deadline. It is redacted, saved to `help-requests.json`, and shown on the operator console at http://127.0.0.1:4100.
+`ControlTurn` holds a controller and increasing turn number. A request transfers control from automation to nobody; **Take control** transfers it to human; resolution returns it to automation. Session operations check this fencing token before acting or extracting. The operator uses the same visible Chromium window, preserving cookies and page state. Frame scripts record clicks and changes only during human control; they do not capture typed values.
 
-**Control model** (`src/handoff/control.ts`). There is one `ControlTurn`: `{controller: automation | human | nobody, turn}`.
-1. A help request hands control to `nobody` (automation paused).
-2. *Take control* hands it to `human`.
-3. A decision hands it back to `automation`.
+Replay supports retrying, continuing from a chosen step after checking the previous checkpoint, verifying completion, or aborting. Discovery can resume with a human-action summary; manual actions are logged and flagged for review, not compiled into replay steps. Missed deadlines stop the run.
 
-The turn number goes up at every hand-over. `Session.act` checks the turn **before every action**. That makes it a fencing token: a runner holding an old turn cannot act after a human took over. Every change is logged.
-
-**Same live session.** Automation runs a visible Chromium, and the operator works in that same window (same cookies, same page). A script in every frame reports clicks and changes by role, name and row label. They are logged as `human_action` only while a human is in control. Typed text is never captured.
-
-**Hand back, then verify.**
-- **Replay** offers:
-  - `retry_step`
-  - `continue_from <step>`: re-checks the previous step first
-  - `mark_done`: reads outputs and runs the final check
-  - `abort`
-
-  A missed deadline gives `nobody_responded`.
-- **Discovery** offers `resume` (the model is told what the human did, and the capability gets a review note) or `abort`.
-
-**Mocked:**
-- The console is a local polling page with one operator and no auth.
-- An escalated replay waits in-process for the decision.
-- Operator steps in `evidence/` were done by a script, and labelled as such.
-
-**Production needs:**
-- isolated browsers streamed to a remote console
-- per-tenant request queues with routing and SLAs
-- the control turn stored as a database lease
-- operator identity recorded on every action
-- an async `needs_human` result
+The local console has one operator, no authentication and an in-process wait. Evidence uses a clearly labelled scripted operator through the same HTTP/control/session mechanism. A production design needs remote session streaming, authenticated operators, durable leases, tenant routing and asynchronous intervention results.
 
 ## 6. Safety
 
-- **Allowlist** (`policies/cu-legacy.json`): allowed origins, allowed and blocked paths, and action types.
-  - Checked in `Session.act` for every action, including where a link leads.
-  - A browser network guard blocks disallowed requests as a second layer.
-- **Risky actions.** An action is irreversible if its name matches (confirm, submit, post, transfer…), its page is marked irreversible, or the step or model declares it. Risk can be raised, never lowered.
-  - Irreversible actions **need human approval**. With no operator available they fail with `approval_required`.
-  - Why approval: blocking outright would make write capabilities useless, and flagging afterwards is too late for money movement.
-  - They are never retried automatically. `AUTO_CONFIRM_RISKY` exists for demos only and logs a warning.
-- **Secrets** are filled in inside `act()` from the environment. Claude, capability files and logs never contain them.
-- **Redaction.** One `Redactor` per run sits where all evidence is written. It covers:
-  - known values: pii inputs and outputs, secrets, and text read from sensitive fields
-  - patterns: SSN, card numbers, dates, phone, email, account numbers
+Configurable policies allow origins, paths and action types. Both writes and extraction pass through Session authorization; a browser request guard adds network enforcement. Risk is raised by policy or the recorded action, never lowered by the model. Irreversible actions require approval, or stop if no operator is available. The demo-only `AUTO_CONFIRM_RISKY` override logs a warning.
 
-  Screenshots mask sensitive fields. Pii outputs are never logged. Playwright traces are off. Tests and a final scan found none of the seeded PII in the evidence.
-- **Limits:**
-  - During discovery the model sees PII on screen; production needs zero data retention or masking.
-  - Name redaction only catches names it has seen in sensitive fields.
-  - The policy works at path level and does not inspect POST bodies.
-  - The console has no authentication.
+Credentials are loaded from environment variables and injected at sign-on, outside the model loop. A shared redactor sanitizes persisted text, using known values and patterns for identifiers, dates, phone numbers and email. Sensitive outputs are withheld from evidence; screenshots mask profile-declared fields and password boxes. Traces are disabled.
+
+Free-form goals are not logged or echoed by the CLI. Callers must declare names, addresses and other non-pattern goal PII using `sensitiveValues` or repeatable `--sensitive-value` flags before discovery. Model-declared sensitive fill/select values are registered before decision logging. Screen fields supply additional known values.
+
+Limits are explicit: undeclared free-text PII cannot be reliably recognized; screenshot masking depends on the profile; discovery sends page text to the model provider; shell history is outside application logging. Production needs stronger data classification and provider retention controls. Policies do not inspect POST bodies, and the console is local and unauthenticated.
 
 ## 7. Cuts
 
-**Cut on purpose:**
-- tenant overlays and a second tenant app (designed in §4)
-- desktop and OCR surfaces (only the seam exists)
-- coordinate clicks, which can't be replayed safely
-- the async `needs_human` result
-- a remote, authenticated operator console
-- turning human actions in discovery into steps (logged and flagged instead)
-- stability runs for irreversible flows (they need a data reset between runs)
-- code generation, a tool catalog, and AI repair
+Built stretch goals are multi-run stability and approval: at least ten successful runs, optionally paired with expected business outcomes, produce a report bound to the capability hash. Unattended replay rejects drafts.
 
-**Stretch goal done: stability + approval.** Stability runs N replays (happy path plus an expected business outcome) and writes a report bound to the content hash. `approve` requires that report to be stable and current. Replay refuses drafts.
+Tenant overlays, desktop/OCR adapters, remote operator identity, queues, durable session recovery, automatic compilation of human steps, generated code and AI repair were deliberately omitted. Write-flow stability needs a controlled data-reset strategy. These cuts preserve a working discovery → artifact → deterministic replay → live handoff thread.
 
-**Next:**
-1. Tenant overlays and per-tenant drift metrics.
-2. Async `needs_human` with a session broker.
-3. A remote operator console.
-4. A UI Automation spike.
-5. An OCR surface for green screens.
+Next priorities are tenant overlays and drift measurement, a session broker with asynchronous handoff, authenticated remote operators, and one desktop accessibility prototype. Deployment-scale infrastructure should follow those validated seams.

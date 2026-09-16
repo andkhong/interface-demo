@@ -34,4 +34,10 @@ describe("Redactor", () => {
     const out = r.value({ password: "hunter2", nested: [{ note: "ssn 900-71-8842" }], count: 3 });
     expect(out).toEqual({ password: "[REDACTED:secret]", nested: [{ note: "ssn [REDACTED:ssn]" }], count: 3 });
   });
+
+  it("protects declared short names without matching inside unrelated words", () => {
+    const r = new Redactor();
+    r.addSensitive("Li");
+    expect(r.text("click Li's link")).toBe("click [REDACTED:pii]'s link");
+  });
 });

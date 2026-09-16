@@ -2,6 +2,8 @@
 
 Everything in this folder was produced by `npm run evidence -- --with-ai` ([`scripts/evidence.ts`](../scripts/evidence.ts)) against the local fake app. [`runs-index.json`](runs-index.json) lists every scenario with its outcome.
 
+These checked-in runs preserve the original discovery evidence. `npm run evidence` refreshes the offline replay scenarios, including write approval, while retaining the real-discovery folders and their index entries. Current discovery logging omits the free-form goal and redacts declared sensitive goal values before any model response is persisted.
+
 ## Scenarios
 
 | Folder | Requirement | What it shows | Result |
@@ -26,7 +28,7 @@ Everything in this folder was produced by `npm run evidence -- --with-ai` ([`scr
 |---|---|
 | `events.jsonl` | One redacted line per event, e.g. `observed`, `ai_decided`, `policy_checked`, `acted`, `target_found`, `recovered`, `help_requested`, `control_changed`, `human_action`, `failed`, `run_finished`. |
 | `result.json` | The result contract returned to the caller. Outputs marked sensitive are replaced. |
-| `transcript.jsonl` | Discovery only: every prompt and model response, redacted. |
+| `transcript.jsonl` | Discovery only: screen/history and model responses, redacted. Current runs omit the free-form goal. |
 | `capability.json` / `capability.md` | Discovery only: the capability that run produced. |
 | `screenshots/` | Masked screenshots: every discovery turn, and failures and help requests during replay. |
 | `pages/` | Redacted HTML of each frame at the moment of failure. |

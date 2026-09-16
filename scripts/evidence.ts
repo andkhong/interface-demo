@@ -8,7 +8,7 @@
 // saying "scripted operator". README.md explains how to do the same steps by hand.
 
 import "dotenv/config";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -36,7 +36,11 @@ const ID_A = "cu-legacy.get-savings-balance";
 
 const scratch = mkdtempSync(join(tmpdir(), "cua-evidence-"));
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const index: { folder: string; shows: string; outcome: string }[] = [];
+// Keep the historical real-discovery entries when regenerating only the offline scenarios.
+const previousIndex = !WITH_AI && existsSync(join(OUT, "runs-index.json"))
+  ? JSON.parse(readFileSync(join(OUT, "runs-index.json"), "utf8")) as { scenarios: { folder: string; shows: string; outcome: string }[] }
+  : { scenarios: [] };
+const index = previousIndex.scenarios.filter((s) => /^(01|10)-discovery/.test(s.folder));
 
 function keep(runDir: string, folder: string, shows: string, outcome: string, extraFiles: string[] = []): string {
   const target = join(OUT, folder);
@@ -143,7 +147,7 @@ async function main() {
     r = await run({ faults: ["app_error"] });
     keep(r.runDir, "06-replay-app-error", "Hard failure with step, expected/observed, masked screenshot and redacted HTML", summarize(r.result, capA));
 
-    r = await run({ allowDraft: false });
+    r = await run({ capability: { ...capA, status: "draft", approval: null }, allowDraft: false });
     keep(r.runDir, "07-replay-refused-draft", "An unapproved (draft) capability is refused for unattended replay", summarize(r.result, capA));
 
     // ---------- 8. stability + approval ----------
@@ -253,7 +257,11 @@ async function main() {
       if (result.status !== "saved") throw new Error(`discovery B stopped: ${result.reason}`);
       keep(result.runDir, "10-discovery-open-sub-account-with-approval", "Real Claude discovery of an irreversible flow; the Confirm click waited for operator approval", `saved ${result.capability.id}@${result.capability.version} in ${result.turns} turns`, operator.screenshot ? [shot] : []);
 
-      const capB = result.capability;
+    }
+
+    // Both write-flow replays work offline using the saved artifact.
+    {
+      const capB = loadCapability("cu-legacy.open-sub-account").capability;
       const inputsB = inputsForSubAccount(capB);
       r = await replay({ capability: capB, inputs: inputsB, baseUrl: app.url, allowDraft: true, headless: true, quiet: true, runsDir: scratch });
       keep(r.runDir, "11-replay-irreversible-without-operator", "Irreversible step with nobody to approve -> stops before clicking", summarize(r.result, capB));
@@ -291,6 +299,7 @@ async function main() {
     await app.close();
   }
 
+  index.sort((a, b) => a.folder.localeCompare(b.folder));
   writeFileSync(
     join(OUT, "runs-index.json"),
     `${JSON.stringify({ generatedAt: new Date().toISOString(), withAi: WITH_AI, scenarios: index }, null, 2)}\n`,

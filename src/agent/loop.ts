@@ -28,6 +28,8 @@ import { missingFields } from "./tools";
 
 export interface DiscoverOptions {
   goal: string;
+  /** Names, addresses, or other goal PII not covered by pattern redaction. Register before the first event. */
+  sensitiveValues?: string[];
   profileId: string;
   baseUrl: string;
   startPath: string;
@@ -64,16 +66,15 @@ function humanNote(resolution: HelpResolution): string {
 export async function discover(opts: DiscoverOptions): Promise<DiscoverResult> {
   const maxSteps = opts.maxSteps ?? 30;
   const redactor = new Redactor();
+  for (const value of opts.sensitiveValues ?? []) redactor.addSensitive(value);
   const log = new RunLogger("discovery", redactor, { rootDir: opts.runsDir, quiet: opts.quiet });
   let turns = 0;
 
   const stop = (reason: string): DiscoverResult => {
     log.writeJson("result.json", { status: "stopped", reason, turns });
     log.event("run_finished", { summary: `stopped: ${reason}`, status: "stopped", reason });
-    return { status: "stopped", reason, runDir: log.dir, runId: log.runId, turns };
+    return { status: "stopped", reason: redactor.text(reason), runDir: log.dir, runId: log.runId, turns };
   };
-
-  log.event("run_started", { summary: `discovery with ${opts.model.name}`, goal: opts.goal, model: opts.model.name, profile: opts.profileId, maxSteps });
 
   let profile: Profile;
   let secrets: Record<string, string>;
@@ -86,6 +87,7 @@ export async function discover(opts: DiscoverOptions): Promise<DiscoverResult> {
     return stop((error as Error).message);
   }
   for (const value of Object.values(secrets)) redactor.addSensitive(value, "secret");
+  log.event("run_started", { summary: `discovery with ${opts.model.name}`, goal: "[not logged: free-form goal]", model: opts.model.name, profile: opts.profileId, maxSteps });
 
   const surface = await WebSurface.launch({
     headless: opts.headless ?? false,
@@ -106,7 +108,7 @@ export async function discover(opts: DiscoverOptions): Promise<DiscoverResult> {
     helpDesk,
     secrets,
     autoConfirmRisky: !!opts.autoConfirmRisky,
-    subject: `discovery: ${opts.goal}`,
+    subject: `discovery: ${opts.capabilityName ?? opts.profileId} (${log.runId})`,
     mode: "discovery",
   });
   opts.hooks?.onStarted?.({ surface, operatorUrl: helpDesk instanceof OperatorConsole ? helpDesk.url : null });
@@ -165,6 +167,11 @@ export async function discover(opts: DiscoverOptions): Promise<DiscoverResult> {
       const started = Date.now();
       const decision = await opts.model.decide({ goal: opts.goal, history, observation });
       const input = decision.input;
+      // Register declared sensitive values before the decision or transcript can persist them.
+      if (input.sensitivity === "pii") {
+        if (decision.tool === "fill" && typeof input.value === "string") redactor.addSensitive(input.value);
+        if (decision.tool === "select" && typeof input.option === "string") redactor.addSensitive(input.option);
+      }
       log.event("ai_decided", {
         summary: `${decision.tool}: ${String(input.intent ?? input.reason ?? input.summary ?? "")}`,
         turn: turns,
@@ -177,7 +184,7 @@ export async function discover(opts: DiscoverOptions): Promise<DiscoverResult> {
       });
       log.append("transcript.jsonl", {
         turn: turns,
-        prompt: { goal: opts.goal, history: [...history], screen: observation.text },
+        prompt: { goal: "[not logged: free-form goal]", history: [...history], screen: observation.text },
         response: { tool: decision.tool, input, text: decision.text, model: decision.model, usage: decision.usage },
       });
       lastWasRead = decision.tool === "extract";
@@ -267,7 +274,13 @@ export async function discover(opts: DiscoverOptions): Promise<DiscoverResult> {
       const sensitivity = input.sensitivity === "pii" ? "pii" : "none";
 
       if (tool === "extract") {
-        const text = await surface.readText(element);
+        const read = await session.read({ element, label: targetName, step: { id: `turn${turns}`, intent } });
+        if (!read.ok) {
+          history.push(`${turns}. extract ${targetName} NOT DONE - ${read.category}: ${read.message}`);
+          failuresInRow++;
+          continue;
+        }
+        const text = read.text;
         const type = input.output_type === "money" ? "money" : "string";
         if (sensitivity === "pii") redactor.addSensitive(text);
         if (type === "money" && !/^-?\$?[\d,]+(\.\d{1,2})?$/.test(text)) {

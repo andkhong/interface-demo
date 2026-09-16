@@ -4,10 +4,12 @@
 import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startMockApp } from "../../apps/mock-cu/server";
 import { replay, type ReplayOptions } from "../../src/replay/engine";
 import { getSavingsBalanceFixture } from "../fixtures/get-savings-balance";
+import * as policyModule from "../../src/safety/policy";
+import { loadCapability } from "../../src/capability/store";
 
 process.env.CU_TELLER_ID ??= "teller01";
 process.env.CU_TELLER_PASSWORD ??= "Legacy-Demo-2026!";
@@ -44,6 +46,21 @@ function allFilesText(dir: string): string {
 }
 
 describe("replay", () => {
+  it("enforces the extraction allowlist on the actual saved capability", async () => {
+    const load = policyModule.loadPolicy;
+    const policy = vi.spyOn(policyModule, "loadPolicy").mockImplementation((id, baseUrl) => {
+      const p = load(id, baseUrl);
+      return { ...p, allowedActions: p.allowedActions.filter((a) => a !== "extract") };
+    });
+    try {
+      const { result, runDir } = await run({ capability: loadCapability("cu-legacy.get-savings-balance@1.0.0").capability, inputs: { memberNumber: "100234" } });
+      expect(result).toMatchObject({ status: "failure", category: "policy_blocked", step: { id: "extractSavingsCurrentBalCell" } });
+      expect(allFilesText(runDir)).not.toContain('"type":"extracted"');
+    } finally {
+      policy.mockRestore();
+    }
+  });
+
   it("succeeds and returns the declared output", async () => {
     const { result } = await run();
     expect(result.status).toBe("success");
